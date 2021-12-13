@@ -88,7 +88,7 @@ func (h *V1Client) getNewAuthToken() (*AuthToken, error) {
 		token:  res.Payload,
 		expiry: time.Now().Add(tokenExpiry),
 	}
-	log.Info(fmt.Sprintf("Generated new auth token and it will expire at %v", authToken.expiry.String()))
+	log.Info(time.Now().String(), fmt.Sprintf("Generated new auth token and it will expire at %v", authToken.expiry.String()))
 	return authToken, nil
 }
 
@@ -123,9 +123,9 @@ func GetProjectContextWithCtx(c context.Context, projectUid string) context.Cont
 func (h *V1Client) getTransport() (*hapitransport.Runtime, error) {
 	if authToken == nil || authToken.expiry.Before(time.Now()) {
 		if authToken == nil {
-			log.Info("Auth token is empty. Thus generating new token")
+			log.Info(time.Now().String(), "Auth token is empty. Thus generating new token")
 		} else if authToken.expiry.Before(time.Now()) {
-			log.Info(fmt.Sprintf("Auth token is expired as expiry time was %v and current time is %v. Thus generating new token", authToken.expiry.String(), time.Now().String()))
+			log.Info(time.Now().String(), fmt.Sprintf("Auth token is expired as expiry time was %v and current time is %v. Thus generating new token", authToken.expiry.String(), time.Now().String()))
 		}
 		if tkn, err := h.getNewAuthToken(); err != nil {
 			log.Error("Failed to get auth token ", err)
