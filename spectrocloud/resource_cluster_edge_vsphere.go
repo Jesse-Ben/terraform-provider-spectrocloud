@@ -209,6 +209,33 @@ func resourceClusterEdgeVsphere() *schema.Resource {
 							Type:     schema.TypeString,
 							Required: true,
 						},
+						"additional_labels": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+						"taints": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"key": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"value": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"effect": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+								},
+							},
+						},
 						"count": {
 							Type:     schema.TypeInt,
 							Required: true,
@@ -450,6 +477,9 @@ func flattenMachinePoolConfigsEdgeVsphere(machinePools []*models.V1VsphereMachin
 	for i, machinePool := range machinePools {
 		oi := make(map[string]interface{})
 
+		oi["additional_labels"] = machinePool.AdditionalLabels
+		oi["taints"] = flattenClusterTaints(machinePool.Taints)
+
 		oi["control_plane"] = machinePool.IsControlPlane
 		oi["control_plane_as_worker"] = machinePool.UseControlPlaneAsWorker
 		oi["name"] = machinePool.Name
@@ -667,6 +697,11 @@ func toMachinePoolEdgeVsphere(machinePool interface{}) *models.V1VsphereMachineP
 
 	}
 
+	additionalLabels := make(map[string]string)
+	if m["additional_labels"] != nil {
+		additionalLabels = expandStringMap(m["additional_labels"].(map[string]interface{}))
+	}
+
 	ins := m["instance_type"].([]interface{})[0].(map[string]interface{})
 	instanceType := models.V1VsphereInstanceType{
 		DiskGiB:   ptr.Int32Ptr(int32(ins["disk_size_gb"].(int))),
@@ -680,6 +715,8 @@ func toMachinePoolEdgeVsphere(machinePool interface{}) *models.V1VsphereMachineP
 			InstanceType: &instanceType,
 		},
 		PoolConfig: &models.V1MachinePoolConfigEntity{
+			AdditionalLabels: additionalLabels,
+			Taints:           toClusterTaints(m),
 			IsControlPlane: controlPlane,
 			Labels:         labels,
 			Name:           ptr.StringPtr(m["name"].(string)),

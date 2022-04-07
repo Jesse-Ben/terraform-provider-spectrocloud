@@ -273,6 +273,33 @@ func resourceClusterLibvirt() *schema.Resource {
 								},
 							},
 						},
+						"additional_labels": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+						"taints": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"key": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"value": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"effect": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -457,6 +484,9 @@ func flattenMachinePoolConfigsLibvirt(machinePools []*models.V1LibvirtMachinePoo
 
 	for i, machinePool := range machinePools {
 		oi := make(map[string]interface{})
+
+		oi["additional_labels"] = machinePool.AdditionalLabels
+		oi["taints"] = flattenClusterTaints(machinePool.Taints)
 
 		oi["control_plane"] = machinePool.IsControlPlane
 		oi["control_plane_as_worker"] = machinePool.UseControlPlaneAsWorker
@@ -649,7 +679,14 @@ func toMachinePoolLibvirt(machinePool interface{}) *models.V1LibvirtMachinePoolC
 	controlPlaneAsWorker := m["control_plane_as_worker"].(bool)
 	if controlPlane {
 		labels = append(labels, "master")
+
 	}
+
+	additionalLabels := make(map[string]string)
+	if m["additional_labels"] != nil {
+		additionalLabels = expandStringMap(m["additional_labels"].(map[string]interface{}))
+	}
+
 
 	placements := make([]*models.V1LibvirtPlacementEntity, 0)
 	for _, pos := range m["placements"].([]interface{}) {
@@ -689,6 +726,8 @@ func toMachinePoolLibvirt(machinePool interface{}) *models.V1LibvirtMachinePoolC
 			InstanceType:     &instanceType,
 		},
 		PoolConfig: &models.V1MachinePoolConfigEntity{
+			AdditionalLabels: additionalLabels,
+			Taints:           toClusterTaints(m),
 			IsControlPlane: controlPlane,
 			Labels:         labels,
 			Name:           ptr.StringPtr(m["name"].(string)),

@@ -189,6 +189,33 @@ func resourceClusterEdge() *schema.Resource {
 								},
 							},
 						},
+						"additional_labels": {
+							Type:     schema.TypeMap,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+						"taints": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"key": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"value": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+									"effect": {
+										Type:     schema.TypeString,
+										Required: true,
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -375,6 +402,8 @@ func flattenMachinePoolConfigsEdge(machinePools []*models.V1EdgeMachinePoolConfi
 		oi := make(map[string]interface{})
 
 		oi["control_plane"] = machinePool.IsControlPlane
+		oi["additional_labels"] = machinePool.AdditionalLabels
+		oi["taints"] = flattenClusterTaints(machinePool.Taints)
 		oi["control_plane_as_worker"] = machinePool.UseControlPlaneAsWorker
 		oi["name"] = machinePool.Name
 		oi["count"] = machinePool.Size
@@ -522,6 +551,10 @@ func toMachinePoolEdge(machinePool interface{}) *models.V1EdgeMachinePoolConfigE
 	if controlPlane {
 		labels = append(labels, "master")
 	}
+	additionalLabels := make(map[string]string)
+	if m["additional_labels"] != nil {
+		additionalLabels = expandStringMap(m["additional_labels"].(map[string]interface{}))
+	}
 
 	placements := make([]*models.V1EdgeMachinePoolHostEntity, 0)
 	for _, pos := range m["placements"].([]interface{}) {
@@ -539,6 +572,8 @@ func toMachinePoolEdge(machinePool interface{}) *models.V1EdgeMachinePoolConfigE
 		},
 		PoolConfig: &models.V1MachinePoolConfigEntity{
 			IsControlPlane: controlPlane,
+			AdditionalLabels: additionalLabels,
+			Taints:           toClusterTaints(m),
 			Labels:         labels,
 			Name:           ptr.StringPtr(m["name"].(string)),
 			Size:           ptr.Int32Ptr(int32(m["count"].(int))),
